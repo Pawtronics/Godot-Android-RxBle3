@@ -15,6 +15,7 @@ dependencyResolutionManagement {
     }
 }
 
-// TODO: Update project's name.
-rootProject.name = "GodotAndroidPluginTemplate"
+// ✅: Update project's name.
+rootProject.name = "RxAndroidBleGd"
 include(":plugin")
+

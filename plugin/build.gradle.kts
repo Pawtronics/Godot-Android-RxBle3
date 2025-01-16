@@ -5,11 +5,11 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// TODO: Update value to your plugin's name.
-val pluginName = "GodotAndroidPluginTemplate"
+// ✅: Update value to your plugin's name.
+val pluginName = "RxAndroidBleGd"
 
-// TODO: Update value to match your plugin's package name.
-val pluginPackageName = "org.godotengine.plugin.android.template"
+// ✅: Update value to match your plugin's package name.
+val pluginPackageName = "org.godotengine.plugin.android.rxble3"
 
 android {
     namespace = pluginPackageName
@@ -39,6 +39,7 @@ android {
 
 dependencies {
     implementation("org.godotengine:godot:4.3.0.stable")
+    implementation("com.polidea.rxandroidble3:rxandroidble:1.19.0")
     // TODO: Additional dependencies should be added to export_plugin.gd as well.
 }
 
