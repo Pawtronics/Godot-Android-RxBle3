@@ -1,5 +1,5 @@
-// TODO: Update to match your plugin's package name.
-package org.godotengine.plugin.android.template
+// ✅: Updated to match plugin's package name.
+package org.godotengine.plugin.android.rxble3
 
 import android.util.Log
 import android.widget.Toast
@@ -19,8 +19,8 @@ class GodotAndroidPlugin(godot: Godot): GodotPlugin(godot) {
     @UsedByGodot
     fun helloWorld() {
         runOnUiThread {
-            Toast.makeText(activity, "Hello World", Toast.LENGTH_LONG).show()
-            Log.v(pluginName, "Hello World")
+            Toast.makeText(activity, "Hello Droid", Toast.LENGTH_LONG).show()
+            Log.v(pluginName, "Hello droid")
         }
     }
 }

@@ -1,3 +1,29 @@
+# RxBlePlugin
+
+https://github.com/dariuszseweryn/RxAndroidBle
+
+
+## TODO: 
+  * Remote Dependencies? [`plugin/export_scripts_template/export_plugin.gd`](plugin/export_scripts_template/export_plugin.gd)
+    
+
+
+## Changes 
+renamed GodotAndroidPluginTemplate to RxAndroidBleGd
+
+
+### build.gradle.kts 
+"org.godotengine.plugin.android.rxble3"
+
+added:
+```
+
+implementation("com.polidea.rxandroidble3:rxandroidble:1.19.0")
+```
+
+
+----
+
 # Godot Android Plugin Template
 This repository serves as a quickstart template for building a Godot Android plugin for Godot 4.2+.
 
@@ -26,20 +52,20 @@ After cloning your own copy to your local machine, configure the project as need
 `TODO` have been added to the project to help identify where changes are needed; here's an 
 overview of the minimum set of modifications needed:
 * Update the name of the Android plugin. Note that the name should not contain any spaces:
-  * Open [`settings.gradle.kts`](settings.gradle.kts) and update the value for `rootProject.name`
-  * Open [`plugin/build.gradle.kts`](plugin/build.gradle.kts) and update the value for `pluginName`
-  * Open [`plugin/export_scripts_template/plugin.cfg`](plugin/export_scripts_template/plugin.cfg)
+  ✅ Open [`settings.gradle.kts`](settings.gradle.kts) and update the value for `rootProject.name`
+  ✅ Open [`plugin/build.gradle.kts`](plugin/build.gradle.kts) and update the value for `pluginName`
+  ✅ Open [`plugin/export_scripts_template/plugin.cfg`](plugin/export_scripts_template/plugin.cfg)
     and update the value for `name`
-  * Open [`plugin/export_scripts_template/export_plugin.gd`](plugin/export_scripts_template/export_plugin.gd)
+  ✅ Open [`plugin/export_scripts_template/export_plugin.gd`](plugin/export_scripts_template/export_plugin.gd)
     and update the value for `_plugin_name`
 * Update the package name of the Android plugin:
-  * Open [`plugin/build.gradle.kts`](plugin/build.gradle.kts) and update the value for `pluginPackageName`
-  * Make sure subdirectories under [`plugin/src/main/java`](plugin/src/main/java) match the 
+  ✅ Open [`plugin/build.gradle.kts`](plugin/build.gradle.kts) and update the value for `pluginPackageName`
+  ✅ Make sure subdirectories under [`plugin/src/main/java`](plugin/src/main/java) match the 
     updated package name
-  * Make sure that `package` at the top of [`GodotAndroidPlugin.kt`](plugin/src/main/java/org/godotengine/plugin/android/template/GodotAndroidPlugin.kt)
+  ✅ Make sure that `package` at the top of [`GodotAndroidPlugin.kt`](plugin/src/main/java/org/godotengine/plugin/android/template/GodotAndroidPlugin.kt)
     matches the updated package name
 * Complete the plugin configuration
-  * Open [`plugin/export_scripts_template/plugin.cfg`](plugin/export_scripts_template/plugin.cfg)
+  ✅ Open [`plugin/export_scripts_template/plugin.cfg`](plugin/export_scripts_template/plugin.cfg)
     * Update the `description` field
     * Update the `author` field
     * Update the `version` field
