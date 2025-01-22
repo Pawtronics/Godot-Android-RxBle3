@@ -36,10 +36,9 @@ google-services.json
 *.properties
 *.jar
 
-# yek fails.
+# 🦨 yek doesn't perform git ** glob expansion same as git
 plugin/build/generated*
 ./plugin/build/generated/source/*
 ./plugin/build/generated/source/**/*
 
-
-
+yek

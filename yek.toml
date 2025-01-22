@@ -4,7 +4,6 @@ patterns = [
 
 # doesn't work
 ignore_patterns = [
-
 ]
 
 [[priority_rules]]
@@ -15,7 +14,7 @@ patterns = [ "^plugin/src/" ]
 score = 75
 patterns = [ ".godot$", ".gd$" ]
 
-[[priority_rules]
+[[priority_rules]]
 score = 60
 patterns = [ ".kt$" ]
 
@@ -37,5 +36,5 @@ patterns = [  ]
 
 
 binary_extensions = [
-    ".jar", ".svg", ".import"
+    ".jar", ".svg", ".import", ".bat"
 ]
