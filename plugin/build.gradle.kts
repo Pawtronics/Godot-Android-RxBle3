@@ -35,13 +35,20 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+
 }
 
 dependencies {
     implementation("org.godotengine:godot:4.3.0.stable")
-    implementation("com.polidea.rxandroidble3:rxandroidble:1.19.0")
+    implementation("com.polidea.rxandroidble3:rxandroidble:1.19.0") {
+        isTransitive = true
+    }
+    implementation("io.reactivex.rxjava3:rxandroid:3.0.2")              // https://github.com/ReactiveX/RxAndroid
+    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
     // TODO: Additional dependencies should be added to export_plugin.gd as well.
 }
+
 
 // BUILD TASKS DEFINITION
 val copyDebugAARToDemoAddons by tasks.registering(Copy::class) {
