@@ -33,11 +33,11 @@ class AndroidExportPlugin extends EditorExportPlugin:
 
 	func _get_android_dependencies(platform, debug):
 		# TODO: Add remote dependices here.
-        return PackedStringArray([
-            "com.polidea.rxandroidble3:rxandroidble:1.19.0",
-            "io.reactivex.rxjava3:rxandroid:3.0.2",
-            "io.reactivex.rxjava3:rxjava:3.1.5"
-        ])
+		return PackedStringArray([
+			"com.polidea.rxandroidble3:rxandroidble:1.19.0",
+			"io.reactivex.rxjava3:rxandroid:3.0.2",
+			"io.reactivex.rxjava3:rxjava:3.1.5"
+		])
 
 		if platform is EditorExportPlatformAndroid:
 			var dependencies = PackedStringArray([
@@ -54,14 +54,17 @@ class AndroidExportPlugin extends EditorExportPlugin:
 			"https://s01.oss.sonatype.org/content/repositories/releases/"
 		])
 
-	func _get_android_manifest_element_contents():
+	func _get_android_manifest_element_contents(platform, debug):
 		return """
-			<uses-permission android:name="android.permission.BLUETOOTH"/>
-			<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
-			<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+		<uses-permission android:name="android.permission.BLUETOOTH"/>
+		<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+		<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+		<uses-permission android:name="android.permission.BLUETOOTH_SCAN"/>
+		<uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+		<uses-permission android:name="android.permission.BLUETOOTH_ADMIN"/>
 		"""
 
-	func _get_android_manifest_application_element_contents():
+	func _get_android_manifest_application_element_contents(platform, debug):
 		return """
 			<meta-data android:name="org.godotengine.plugin.v2.RxAndroidBleGd" 
 					android:value="org.godotengine.plugin.android.rxble3.GodotAndroidPlugin"/>

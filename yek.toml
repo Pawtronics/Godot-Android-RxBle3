@@ -1,0 +1,40 @@
+patterns = [
+    ".gd$"
+]
+
+# doesn't work
+ignore_patterns = [
+]
+
+[[priority_rules]]
+score = 100
+patterns = [ "^plugin/src/" ]
+
+[[priority_rules]]
+score = 75
+patterns = [ ".godot$", ".gd$" ]
+
+[[priority_rules]]
+score = 60
+patterns = [ ".kt$" ]
+
+[[priority_rules]]
+score = 50
+patterns = [ ".md$" ]
+
+[[priority_rules]]
+score = 20
+patterns = [ "./plugin/src/main/java/*" ]
+
+[[priority_rules]]
+score = 10
+patterns = [ "./plugin/src/main/AndroidMainfest.xml" ]
+
+[[priority_rules]]
+score = 0
+patterns = [  ]
+
+
+binary_extensions = [
+    ".jar", ".svg", ".import", ".bat"
+]

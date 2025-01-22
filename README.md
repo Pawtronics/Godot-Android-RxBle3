@@ -2,30 +2,27 @@
 
 https://github.com/dariuszseweryn/RxAndroidBle
 
+Bluetooth Low Energy (BLE) library for Android that uses RxJava3 and RxAndroid3 for Godot Engine.
 
-## TODO: 
-  * Remote Dependencies? [`plugin/export_scripts_template/export_plugin.gd`](plugin/export_scripts_template/export_plugin.gd)
-    
-
-
-## Changes 
-renamed GodotAndroidPluginTemplate to RxAndroidBleGd
+This is for Pawtronics RD1 (reward dispenser model 1)
 
 
-### build.gradle.kts 
-"org.godotengine.plugin.android.rxble3"
+## Quickstart
+🤓 [./justfile](./justfile)
 
-added:
+plugin/demo - has godot project
+plugin/src/main/AndroidManifest.xml 
+plugin/src/java/org/godotengine/plugin/android/template/GodotAndroidPlugin.kt - is source
+
+
+```bash
+ adb logcat *:S godot:V RxBle3:V RxAndroidBleGd:V
 ```
 
-implementation("com.polidea.rxandroidble3:rxandroidble:1.19.0")
-```
+# Usage/Integration
 
 
 ----
-
-# Godot Android Plugin Template
-This repository serves as a quickstart template for building a Godot Android plugin for Godot 4.2+.
 
 ## Contents
 * An illustrative simple Godot project: [`plugin/demo`](plugin/demo)
