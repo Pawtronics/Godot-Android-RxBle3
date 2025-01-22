@@ -2,10 +2,8 @@
 
 https://github.com/dariuszseweryn/RxAndroidBle
 
+Bluetooth Low Energy (BLE) library for Android that uses RxJava3 and RxAndroid3 for Godot Engine.
 
-## TODO: 
-  * Remote Dependencies? [`plugin/export_scripts_template/export_plugin.gd`](plugin/export_scripts_template/export_plugin.gd)
-    
 
 
 ## Changes 

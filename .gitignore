@@ -31,3 +31,15 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# brian
+*.properties
+*.jar
+
+# yek fails.
+plugin/build/generated*
+./plugin/build/generated/source/*
+./plugin/build/generated/source/**/*
+
+
+
