@@ -57,6 +57,28 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         Log.v(TAG, message)
     }
 
+    @UsedByGodot
+    fun getDiagnostics(): String {
+        val osVersion = android.os.Build.VERSION.RELEASE
+        val deviceModel = android.os.Build.MODEL
+        val deviceManufacturer = android.os.Build.MANUFACTURER
+        val bleState = rxBleClient.state.toString()
+
+        return """
+            |Plugin: $pluginName
+            |OS Version: $osVersion
+            |Device Model: $deviceModel
+            |Device Manufacturer: $deviceManufacturer
+            |BLE State: $bleState
+        """.trimMargin()
+    }
+
+
+    @UsedByGodot
+    fun showDebugToast(message: String) {
+        debugToast(message)
+    }
+
     /**
      * Sends an event to Godot with the specified name and parameters.
      */
