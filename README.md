@@ -4,7 +4,14 @@ https://github.com/dariuszseweryn/RxAndroidBle
 
 Bluetooth Low Energy (BLE) library for Android that uses RxJava3 and RxAndroid3 for Godot Engine.
 
-This is for Pawtronics RD1 (reward dispenser model 1)
+This is for Pawtronics RD1 (reward dispenser model 1) project, however I've done my best to make sure it's generic enough to be used in other projects.
+
+## Features
+* Generic Operations: All methods are designed to work with any BLE device, specified dynamically via parameters.
+* Event-Driven Communication: Utilizes Godot's signal mechanism to emit events back to Godot scripts, facilitating reactive handling.
+* Comprehensive Error Handling: Captures and communicates all potential BLE-related errors.
+* Lifecycle and Resource Management: Ensures proper management of RxJava disposables to prevent memory leaks.
+* Thread Management: Ensures UI-related operations are executed on the main thread.
 
 
 ## Quickstart

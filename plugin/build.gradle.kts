@@ -20,7 +20,7 @@ android {
     }
 
     defaultConfig {
-        minSdk = 21
+        minSdk = 24
 
         manifestPlaceholders["godotPluginName"] = pluginName
         manifestPlaceholders["godotPluginPackageName"] = pluginPackageName
@@ -44,8 +44,12 @@ dependencies {
     implementation("com.polidea.rxandroidble3:rxandroidble:1.19.0") {
         isTransitive = true
     }
+    implementation("androidx.core:core-ktx:1.15.0")
+
     implementation("io.reactivex.rxjava3:rxandroid:3.0.2")              // https://github.com/ReactiveX/RxAndroid
     implementation("io.reactivex.rxjava3:rxjava:3.1.5")
+
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:1.9.20")
     // TODO: Additional dependencies should be added to export_plugin.gd as well.
 }
 
