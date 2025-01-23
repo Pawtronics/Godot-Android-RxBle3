@@ -9,7 +9,6 @@ import androidx.core.app.ActivityCompat
 import android.content.pm.PackageManager
 import android.annotation.SuppressLint
 
-
 import com.polidea.rxandroidble3.RxBleClient
 import com.polidea.rxandroidble3.RxBleDevice
 import com.polidea.rxandroidble3.scan.ScanFilter
@@ -25,17 +24,20 @@ import org.godotengine.godot.plugin.GodotPlugin
 import org.godotengine.godot.plugin.UsedByGodot
 import java.util.UUID
 
-
-
 class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
     private val TAG = "RxAndroidBleGd"
     private val rxBleClient: RxBleClient = RxBleClient.create(godot.getActivity() as Context)
-    /**
-     * The CompositeDisposable ensures that all subscriptions are properly disposed of, preventing memory leaks. 
-     * It's crucial to manage these disposables, especially when dealing with long-lived connections or subscriptions.
-     */
+
+    // Existing disposable for general subscriptions (e.g., scanning)
     private val disposables: CompositeDisposable = CompositeDisposable()
+
+    /**
+     * Map to hold CompositeDisposable for each device using MAC address as the key.
+     * This allows managing multiple device connections independently.
+     */
+    private val deviceDisposablesMap: MutableMap<String, CompositeDisposable> = mutableMapOf()
+
 
     override fun getPluginName() = "RxAndroidBleGd"
 
@@ -44,11 +46,13 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     }
 
     /**
-     * Displays a toast message and logs it. MVP for debugging.
+     * Displays a toast message and logs it.
      */
     private fun debugToast(message: String) {
         runOnUiThread {
-            Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+            activity?.let {
+                Toast.makeText(it, message, Toast.LENGTH_SHORT).show()
+            } ?: Log.e(TAG, "Activity is null, cannot show toast: $message")
         }
         Log.v(TAG, message)
     }
@@ -59,6 +63,13 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     private fun sendGodotEvent(eventName: String, vararg params: Any) {
         emitSignal(eventName, *params)
     }
+
+    /**
+     * Retrieves the CompositeDisposable for a given device, creating one if it doesn't exist.
+     */
+    private fun getDeviceDisposables(macAddress: String): CompositeDisposable {
+        return deviceDisposablesMap.getOrPut(macAddress) { CompositeDisposable() }
+    }    
 
     /**
      * Exposed method to start scanning for BLE devices with optional filters.
@@ -88,7 +99,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             val parcelUuid = ParcelUuid(UUID.fromString(serviceUuid))
             filters.add(ScanFilter.Builder().setServiceUuid(parcelUuid))
         }
-        
+
         val scanSettings = ScanSettings.Builder()
             .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
@@ -99,7 +110,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             emptyList()
         }
 
-        disposables.add(
+        getDeviceDisposables(macAddress).add(
             rxBleClient.scanBleDevices(scanSettings, *scanFilterList.toTypedArray())
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -110,16 +121,18 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
                 }, { throwable ->
                     Log.e(TAG, "Scan failed: ${throwable.message}")
                     sendGodotEvent("scan_error", throwable.message ?: "Unknown error")
-                })                
+                })
         )
     }
 
     /**
      * Exposed method to stop scanning for BLE devices.
+     * Clears all scan-related disposables.
      */
     @UsedByGodot
     fun stopScan() {
         Log.v(TAG, "stopScan() called")
+        // Only dispose scan-related subscriptions
         disposables.clear()
         debugToast("BLE Scan Stopped")
         sendGodotEvent("scan_stopped")
@@ -138,8 +151,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         sendGodotEvent("connect_started", macAddress)
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
+        val deviceDisposables = getDeviceDisposables(macAddress)
 
-        disposables.add(
+        deviceDisposables.add(
             device.establishConnection(false)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -177,20 +191,31 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
     /**
      * Exposed method to disconnect from a BLE device by its MAC address.
+     * Events Emitted:
+     *  - disconnected: Emitted when disconnection is successful.
      * @param macAddress The MAC address of the device to disconnect from.
      */
     @UsedByGodot
     fun disconnectDevice(macAddress: String) {
         Log.v(TAG, "disconnectDevice() called with MAC: $macAddress")
-        @Suppress("UNUSED_VARIABLE")
-        val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
-        disposables.clear()
-        debugToast("Disconnected from $macAddress")
-        sendGodotEvent("disconnected", macAddress)
+        // val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
+        val deviceDisposables = deviceDisposablesMap[macAddress]
+
+        deviceDisposables?.let {
+            it.dispose()
+            deviceDisposablesMap.remove(macAddress)
+            debugToast("Disconnected from $macAddress")
+            sendGodotEvent("disconnected", macAddress)
+        } ?: run {
+            Log.e(TAG, "No active connection found for $macAddress")
+            sendGodotEvent("disconnect_error", macAddress, "No active connection found")
+        }
     }
 
     /**
      * Exposed method to read a characteristic from a connected BLE device.
+     * Events Emitted:
+     * - read_characteristic_started, read_characteristic_success, read_characteristic_error
      * @param macAddress The MAC address of the connected device.
      * @param characteristicUuid The UUID of the characteristic to read.
      */
@@ -201,10 +226,11 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val uuid = UUID.fromString(characteristicUuid)
+        val deviceDisposables = getDeviceDisposables(macAddress)
 
-        disposables.add(
+        deviceDisposables.add(
             device.establishConnection(false)
-                .flatMapSingle { it.readCharacteristic(uuid) }
+                .flatMapSingle { connection -> connection.readCharacteristic(uuid) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ bytes ->
@@ -220,6 +246,8 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
     /**
      * Exposed method to write to a characteristic on a connected BLE device.
+     * Events Emitted:
+     * - write_characteristic_started, write_characteristic_success, write_characteristic_error
      * @param macAddress The MAC address of the connected device.
      * @param characteristicUuid The UUID of the characteristic to write to.
      * @param value The byte array to write, represented as a hex string (e.g., "0A1B2C").
@@ -232,10 +260,11 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val uuid = UUID.fromString(characteristicUuid)
         val bytesToWrite = hexStringToByteArray(value)
+        val deviceDisposables = getDeviceDisposables(macAddress)
 
-        disposables.add(
+        deviceDisposables.add(
             device.establishConnection(false)
-                .flatMapSingle { it.writeCharacteristic(uuid, bytesToWrite) }
+                .flatMapSingle { connection -> connection.writeCharacteristic(uuid, bytesToWrite) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ writtenBytes ->
@@ -251,6 +280,8 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
     /**
      * Exposed method to subscribe to notifications for a characteristic.
+     * Events Emitted:
+     * - subscribe_notifications_started, subscribe_notifications_success, subscribe_notifications_error, notification_received, notification_error
      * @param macAddress The MAC address of the connected device.
      * @param characteristicUuid The UUID of the characteristic to subscribe to.
      */
@@ -261,50 +292,54 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val uuid = UUID.fromString(characteristicUuid)
+        val deviceDisposables = getDeviceDisposables(macAddress)
 
-        disposables.add(
+        deviceDisposables.add(
             device.establishConnection(false)
-            .flatMap { connection -> connection.setupNotification(uuid) }
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe({ notificationObservable: Observable<ByteArray> ->
-                    disposables.add(
-                        notificationObservable
-                            .subscribe({ bytes: ByteArray ->
-                                val notificationValue = bytes.joinToString(separator = "") { String.format("%02X", it) }
-                                Log.v(TAG, "Notification received: $notificationValue")
-                                sendGodotEvent("notification_received", macAddress, characteristicUuid, notificationValue)
-                            }, { notificationError: Throwable ->
-                                Log.e(TAG, "Notification error: ${notificationError.message}")
-                                sendGodotEvent("notification_error", macAddress, characteristicUuid, notificationError.message ?: "Unknown error")
+                .flatMap { connection -> connection.setupNotification(uuid) }
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({ notificationObservable: Observable<ByteArray> ->
+                    val notificationDisposable = notificationObservable
+                        .subscribe({ bytes: ByteArray ->
+                            val notificationValue = bytes.joinToString(separator = "") { String.format("%02X", it) }
+                            Log.v(TAG, "Notification received: $notificationValue")
+                            sendGodotEvent("notification_received", macAddress, characteristicUuid, notificationValue)
+                        }, { notificationError: Throwable ->
+                            Log.e(TAG, "Notification error: ${notificationError.message}")
+                            sendGodotEvent("notification_error", macAddress, characteristicUuid, notificationError.message ?: "Unknown error")
                         })
-                    )
+                    deviceDisposables.add(notificationDisposable)
+                    sendGodotEvent("subscribe_notifications_success", macAddress, characteristicUuid)
                 }, { setupError: Throwable ->
                     Log.e(TAG, "Setup notification failed: ${setupError.message}")
                     sendGodotEvent("subscribe_notifications_error", macAddress, characteristicUuid, setupError.message ?: "Unknown error")
-                })       
+                })
         )
     }
 
     /**
      * Exposed method to unsubscribe from notifications for a characteristic.
+     * Events Emitted:
+     * - unsubscribe_notifications: Emitted when unsubscribing is successful.
      * @param macAddress The MAC address of the connected device.
      * @param characteristicUuid The UUID of the characteristic to unsubscribe from.
      */
     @UsedByGodot
     fun unsubscribeFromNotifications(macAddress: String, characteristicUuid: String) {
         Log.v(TAG, "unsubscribeFromNotifications() called for $macAddress, UUID: $characteristicUuid")
-        val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
-        @Suppress("UNUSED_VARIABLE")
-        val uuid = UUID.fromString(characteristicUuid)
+        // val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
+        val deviceDisposables = deviceDisposablesMap[macAddress]
 
-        // needed later, add logging to use the variable
-        Log.d(TAG, "Device obtained: ${device.macAddress}")
-
-        // RxAndroidBle manages notification observables internally, disposing them will unsubscribe
-        disposables.clear()
-        debugToast("Unsubscribed from notifications for $characteristicUuid")
-        sendGodotEvent("unsubscribe_notifications", macAddress, characteristicUuid)
+        deviceDisposables?.let {
+            it.dispose()
+            deviceDisposablesMap.remove(macAddress)
+            debugToast("Unsubscribed from notifications for $characteristicUuid")
+            sendGodotEvent("unsubscribe_notifications", macAddress, characteristicUuid)
+        } ?: run {
+            Log.e(TAG, "No active subscription found for $macAddress on $characteristicUuid")
+            sendGodotEvent("unsubscribe_notifications_error", macAddress, characteristicUuid, "No active subscription found")
+        }
     }
 
     /**
@@ -318,8 +353,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     fun observeConnectionState(macAddress: String) {
         Log.v(TAG, "observeConnectionState() called for MAC: $macAddress")
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
+        val deviceDisposables = getDeviceDisposables(macAddress)
 
-        disposables.add(
+        deviceDisposables.add(
             device.observeConnectionStateChanges()
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
@@ -335,6 +371,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
     /**
      * Exposed method to initiate bonding (pairing) with a BLE device.
+     * Events Emitted:
      * - pairing_started: Emitted when pairing starts.
      * - pairing_initiated: Emitted when pairing is successfully initiated.
      * - pairing_failed: Emitted if pairing initiation fails.
@@ -346,37 +383,40 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     fun pairDevice(macAddress: String) {
         Log.v(TAG, "pairDevice() called with MAC: $macAddress")
         sendGodotEvent("pairing_started", macAddress)
-    
+
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val bluetoothDevice: BluetoothDevice = device.bluetoothDevice
-    
-        if (ActivityCompat.checkSelfPermission(activity!!, android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-            disposables.add(
-                rxBleClient.observeStateChanges()
-                    .filter { it == RxBleClient.State.READY }
-                    .firstOrError()
-                    .subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe({
-                        val success = bluetoothDevice.createBond()
-                        if (success) {
-                            Log.v(TAG, "Pairing initiated with $macAddress")
-                            sendGodotEvent("pairing_initiated", macAddress)
-                        } else {
-                            Log.e(TAG, "Pairing initiation failed with $macAddress")
-                            sendGodotEvent("pairing_failed", macAddress, "Failed to initiate pairing")
-                        }
-                    }, { throwable ->
-                        Log.e(TAG, "Pairing observation failed: ${throwable.message}")
-                        sendGodotEvent("pairing_error", macAddress, throwable.message ?: "Unknown pairing error")
-                    })
-            )
-        } else {
+        // val deviceDisposables = getDeviceDisposables(macAddress)
+
+        // Check for necessary permissions
+        if (ActivityCompat.checkSelfPermission(activity!!, android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             Log.e(TAG, "BLUETOOTH_CONNECT permission not granted")
             sendGodotEvent("pairing_error", macAddress, "Missing BLUETOOTH_CONNECT permission")
+            return
         }
+
+        getDeviceDisposables(macAddress).add(
+            rxBleClient.observeStateChanges()
+                .filter { it == RxBleClient.State.READY }
+                .firstOrError()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe({
+                    val success = bluetoothDevice.createBond()
+                    if (success) {
+                        Log.v(TAG, "Pairing initiated with $macAddress")
+                        sendGodotEvent("pairing_initiated", macAddress)
+                    } else {
+                        Log.e(TAG, "Pairing initiation failed with $macAddress")
+                        sendGodotEvent("pairing_failed", macAddress, "Failed to initiate pairing")
+                    }
+                }, { throwable ->
+                    Log.e(TAG, "Pairing observation failed: ${throwable.message}")
+                    sendGodotEvent("pairing_error", macAddress, throwable.message ?: "Unknown pairing error")
+                })
+        )
     }
-    
+
     /**
      * Exposed method to request MTU size for a connected BLE device.
      * Events Emitted:
@@ -392,10 +432,11 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         sendGodotEvent("request_mtu_started", macAddress, mtu)
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
+        val deviceDisposables = getDeviceDisposables(macAddress)
 
-        disposables.add(
+        deviceDisposables.add(
             device.establishConnection(false)
-                .flatMapSingle { it.requestMtu(mtu) }
+                .flatMapSingle { connection -> connection.requestMtu(mtu) }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ grantedMtu ->
@@ -423,9 +464,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
 
-        disposables.add(
+        getDeviceDisposables(macAddress).add(
             device.establishConnection(false)
-                .flatMapSingle { it.readRssi() }
+                .flatMapSingle { connection -> connection.readRssi() }
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe({ rssi ->
@@ -441,6 +482,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     /**
      * Exposed method to perform a custom GATT operation.
      * Note: This is a generic placeholder. Implement specific operations as needed.
+     * Events Emitted:
+     * - custom_gatt_operation_started: Emitted when a custom GATT operation starts.
+     * - custom_gatt_operation_error: Emitted if the custom GATT operation fails or is unsupported.
      * @param macAddress The MAC address of the connected device.
      * @param operation The name of the operation (e.g., "read", "write").
      * @param characteristicUuid The UUID of the characteristic.
@@ -450,11 +494,6 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     fun performCustomGattOperation(macAddress: String, operation: String, characteristicUuid: String, value: String = "") {
         Log.v(TAG, "performCustomGattOperation() called for $macAddress, Operation: $operation, UUID: $characteristicUuid, Value: $value")
         sendGodotEvent("custom_gatt_operation_started", macAddress, operation, characteristicUuid, value)
-
-        @Suppress("UNUSED_VARIABLE")
-        val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
-        @Suppress("UNUSED_VARIABLE")
-        val uuid = UUID.fromString(characteristicUuid)
 
         when (operation.lowercase()) {
             "read" -> {
@@ -487,6 +526,8 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
      */
     override fun onMainDestroy() {
         disposables.clear()
+        deviceDisposablesMap.values.forEach { it.dispose() }
+        deviceDisposablesMap.clear()
         super.onMainDestroy()
     }
 
@@ -494,10 +535,8 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
      * Helper method to run actions on the UI thread.
      */
     private fun runOnUiThread(action: () -> Unit) {
-        // activity.runOnUiThread(action)
         activity?.let {
             it.runOnUiThread(action)
-        } ?: Log.e(TAG, "Activity is null")
-        
+        } ?: Log.e(TAG, "Activity is null, cannot run on UI thread")
     }
 }
