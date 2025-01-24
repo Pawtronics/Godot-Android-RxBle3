@@ -22,6 +22,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers
 import org.godotengine.godot.Godot
 import org.godotengine.godot.plugin.GodotPlugin
 import org.godotengine.godot.plugin.UsedByGodot
+import org.godotengine.godot.plugin.SignalInfo
 import java.util.UUID
 
 class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
@@ -37,9 +38,41 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
      * This allows managing multiple device connections independently.
      */
     private val deviceDisposablesMap: MutableMap<String, CompositeDisposable> = mutableMapOf()
-
+    private var isScanning = false
 
     override fun getPluginName() = "RxAndroidBleGd"
+
+    override fun getPluginMethods(): List<String> {
+        return listOf(
+            "startScan", "stopScan", "connectToDevice", "disconnectDevice",
+            "readCharacteristic", "writeCharacteristic", "subscribeToNotifications", "unsubscribeFromNotifications",
+            "pairDevice", "requestMtu", "readRssi", "performCustomGattOperation"
+        )
+    }
+
+
+
+    override fun getPluginSignals(): MutableSet<SignalInfo> {
+        return mutableSetOf(
+            SignalInfo("ble_scan_started"),
+            SignalInfo("ble_scan_stopped"),
+            SignalInfo("ble_device_found", String::class.java, String::class.java),
+            SignalInfo("ble_scan_error", String::class.java),
+            SignalInfo("ble_connected", String::class.java),
+            SignalInfo("ble_connect_error", String::class.java, String::class.java),
+            SignalInfo("ble_disconnected", String::class.java),
+            SignalInfo("ble_notification_received", String::class.java, String::class.java, String::class.java),
+            SignalInfo("ble_notification_error", String::class.java, String::class.java, String::class.java),
+            SignalInfo("ble_pairing_started", String::class.java),
+            SignalInfo("ble_pairing_failed", String::class.java, String::class.java),
+            SignalInfo("ble_pairing_error", String::class.java, String::class.java),
+            SignalInfo("ble_request_mtu_success", String::class.java, Int::class.java),
+            SignalInfo("ble_request_mtu_error", String::class.java, String::class.java),
+            SignalInfo("ble_connection_state_changed", String::class.java, String::class.java),
+            SignalInfo("ble_connection_state_error", String::class.java, String::class.java)
+        )
+    }
+
 
     init {
         Log.v(TAG, "GodotAndroidPlugin initialized")
@@ -125,6 +158,12 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             return
         }
 
+        if (isScanning) {
+            Log.w(TAG, "Scan already in progress")
+            return
+        }
+        isScanning = true
+
         // debugToast("BLE Scan Started")
         sendGodotEvent("ble_scan_started")
         Log.v(TAG, "startScan() finished")
@@ -182,10 +221,16 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun stopScan() {
         Log.v(TAG, "stopScan() called")
+        if (!isScanning) return
+        isScanning = false
         // Only dispose scan-related subscriptions
         disposables.clear()
         // debugToast("BLE Scan Stopped")
         sendGodotEvent("ble_scan_stopped")
+
+        getDeviceDisposables("").dispose()
+        deviceDisposablesMap.clear()
+        Log.v(TAG, "BLE Scan Stopped")
     }
 
     /**

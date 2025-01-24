@@ -19,7 +19,7 @@ extends Node
 signal scan_started
 signal scan_stopped
 signal scan_progress
-signal ble_device_found(mac_address, device_name)
+signal device_found(mac_address, device_name)
 signal scan_error(error_message)
 signal connect_started(mac_address)
 signal connected(mac_address)
@@ -46,7 +46,6 @@ var _android_plugin
 
 var scan_timer: Timer = null
 var remaining_time: int = 30  # 30-second scan timeout
-
 
 func get_diagnostics() -> String:
 	if _android_plugin:
