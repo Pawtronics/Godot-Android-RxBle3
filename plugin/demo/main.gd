@@ -8,7 +8,10 @@ var GodotOS = OS
 func _ready():
 	if ble_manager:
 		request_permissions()
-		_connect_ble_signals()
+		#ble_manager._connect_plugin_signals()
+		print("main+ble_manager is _ready")
+		ble_manager.connect("scan_progress", Callable(self, "_on_scan_progress"))
+		ble_manager.connect("device_found", Callable(self, "_on_device_found"))
 	else:
 		printerr("BleManager singleton not found")
 
@@ -29,13 +32,19 @@ func request_permissions():
 		else:
 			print("Permission request API not available")
 			
-func _connect_ble_signals():
-	ble_manager._connect_plugin_signals
-
 # UI Button Handlers (Assuming you're using Godot's UI system with signals connected to these methods)
 
 func _on_ButtonScan_pressed():
 	ble_manager.start_scan()
+
+func _on_scan_progress(seconds_left):
+	print("main.gd on_scan_progress ", seconds_left)
+	#var button = get_node("ButtonScan")
+	#if button:
+		#if seconds_left > 0:
+			#button.text = "Scanning... %d" % seconds_left
+		#else:
+			#button.text = "Start Scan"
 
 func _on_ButtonHello_pressed():
 	if ble_manager:
@@ -61,6 +70,9 @@ func _on_ButtonWriteFixedValue_pressed():
 
 # Signal Handler Implementations
 
+
+
+
 func _on_scan_started():
 	print("Scan started")
 
@@ -69,6 +81,10 @@ func _on_scan_stopped():
 
 func _on_device_found(mac_address, device_name):
 	print("Device found: %s (%s)" % [mac_address, device_name])
+	# Optionally, display in UI or store in a list
+
+func _on_device_discovered(mac_address, device_name):
+	print("Device discovered: %s (%s)" % [mac_address, device_name])
 	# Optionally, display in UI or store in a list
 
 func _on_scan_error(error_message):
