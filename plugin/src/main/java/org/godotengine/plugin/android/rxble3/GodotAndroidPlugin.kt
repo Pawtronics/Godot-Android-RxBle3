@@ -23,6 +23,7 @@ import android.annotation.SuppressLint
 
 import com.polidea.rxandroidble3.RxBleClient
 import com.polidea.rxandroidble3.RxBleDevice
+import com.polidea.rxandroidble3.RxBleConnection
 import com.polidea.rxandroidble3.scan.ScanFilter
 import com.polidea.rxandroidble3.scan.ScanSettings
 import com.polidea.rxandroidble3.scan.ScanResult
@@ -45,7 +46,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
     // Existing disposable for general subscriptions (e.g., scanning)
     private val disposables: CompositeDisposable = CompositeDisposable()
-
+    
     /**
      * Map to hold CompositeDisposable for each device using MAC address as the key.
      * This allows managing multiple device connections independently.
@@ -85,9 +86,13 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             SignalInfo("ble_pairing_error", String::class.java, String::class.java),
             SignalInfo("ble_connected", String::class.java),
             SignalInfo("ble_characteristic_discovered", String::class.java),
-            // 
+            
             SignalInfo("ble_read_characteristic_success", String::class.java, String::class.java, String::class.java),
             SignalInfo("ble_read_characteristic_error", String::class.java),
+
+            SignalInfo("ble_write_characteristic_success", String::class.java, String::class.java, String::class.java),
+            SignalInfo("ble_write_characteristic_error", String::class.java, String::class.java, String::class.java),
+
             // FUTURE: 
             // SignalInfo("ble_scan_error", String::class.java),
             // SignalInfo("ble_connect_error", String::class.java, String::class.java),
@@ -383,28 +388,85 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun writeCharacteristic(macAddress: String, characteristicUuid: String, value: String) {
         Log.v(TAG, "writeCharacteristic() called for $macAddress, UUID: $characteristicUuid, Value: $value")
-        sendGodotEvent("ble_write_characteristic_started", macAddress, characteristicUuid, value)
-
+    
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val uuid = UUID.fromString(characteristicUuid)
         val bytesToWrite = hexStringToByteArray(value)
         val deviceDisposables = getDeviceDisposables(macAddress)
-
-        deviceDisposables.add(
-            device.establishConnection(false)
-                .flatMapSingle { connection -> connection.writeCharacteristic(uuid, bytesToWrite) }
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe({ writtenBytes ->
-                    val writtenValue = writtenBytes.joinToString(separator = "") { String.format("%02X", it) }
-                    Log.v(TAG, "Write successful: $writtenValue")
-                    sendGodotEvent("ble_write_characteristic_success", macAddress, characteristicUuid, writtenValue)
-                }, { writeError ->
-                    Log.e(TAG, "Write failed: ${writeError.message}")
-                    sendGodotEvent("ble_write_characteristic_error", macAddress, characteristicUuid, writeError.message ?: "Unknown write error")
-                })
-        )
+    
+        // val connectionObservable = if (device.connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) {
+        //     Log.v(TAG, "Reusing existing connection for $macAddress")
+        //     device.establishConnection(false).take(1)
+        // } else {
+        //     Log.v(TAG, "Establishing new connection for $macAddress")
+        //     device.establishConnection(false)
+        // }
+    
+        // Check if there's an active connection
+        if (device.connectionState == RxBleConnection.RxBleConnectionState.CONNECTED) {
+            Log.v(TAG, "Reusing existing connection for $macAddress")
+            deviceDisposables.add(
+                device.establishConnection(false)
+                    .firstElement()  // Get the current active connection instead of creating a new one
+                    .flatMapSingle { connection -> connection.writeCharacteristic(uuid, bytesToWrite) }
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ writtenBytes ->
+                        val writtenValue = writtenBytes.joinToString("") { String.format("%02X", it) }
+                        Log.v(TAG, "Write successful: $writtenValue")
+                        sendGodotEvent("ble_write_characteristic_success", macAddress, characteristicUuid, writtenValue)
+                    }, { writeError ->
+                        Log.e(TAG, "Write failed: ${writeError.message}")
+                        sendGodotEvent("ble_write_characteristic_error", macAddress, characteristicUuid, writeError.message ?: "Unknown write error")
+                    })
+            )
+        } else {
+            Log.v(TAG, "Establishing new connection for $macAddress")
+            deviceDisposables.add(
+                device.establishConnection(false)
+                    .flatMapSingle { connection -> 
+                        connection.writeCharacteristic(uuid, bytesToWrite)
+                            .doOnSubscribe { sendGodotEvent("ble_write_characteristic_started", macAddress, characteristicUuid, value) }
+                    }
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe({ writtenBytes ->
+                        val writtenValue = writtenBytes.joinToString("") { String.format("%02X", it) }
+                        Log.v(TAG, "Write successful: $writtenValue")
+                        sendGodotEvent("ble_write_characteristic_success", macAddress, characteristicUuid, writtenValue)
+                    }, { writeError ->
+                        Log.e(TAG, "Write failed: ${writeError.message}")
+                        sendGodotEvent("ble_write_characteristic_error", macAddress, characteristicUuid, writeError.message ?: "Unknown write error")
+                    })
+            )
+        }
     }
+
+    // @UsedByGodot
+    // fun writeCharacteristic(macAddress: String, characteristicUuid: String, value: String) {
+    //     Log.v(TAG, "writeCharacteristic() called for $macAddress, UUID: $characteristicUuid, Value: $value")
+    //     // sendGodotEvent("ble_write_characteristic_started", macAddress, characteristicUuid, value)
+
+    //     val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
+    //     val uuid = UUID.fromString(characteristicUuid)
+    //     val bytesToWrite = hexStringToByteArray(value)
+    //     val deviceDisposables = getDeviceDisposables(macAddress)
+
+    //     deviceDisposables.add(
+    //         device.establishConnection(false)
+    //             .flatMapSingle { connection -> connection.writeCharacteristic(uuid, bytesToWrite) }
+    //             .subscribeOn(Schedulers.io())
+    //             .observeOn(AndroidSchedulers.mainThread())
+    //             .subscribe({ writtenBytes ->
+    //                 val writtenValue = writtenBytes.joinToString(separator = "") { String.format("%02X", it) }
+    //                 Log.v(TAG, "Write successful: $writtenValue")
+    //                 sendGodotEvent("ble_write_characteristic_success", macAddress, characteristicUuid, writtenValue)
+    //             }, { writeError ->
+    //                 Log.e(TAG, "Write failed: ${writeError.message}")
+    //                 sendGodotEvent("ble_write_characteristic_error", macAddress, characteristicUuid, writeError.message ?: "Unknown write error")
+    //             })
+    //     )
+    // }
 
     /**
      * Exposed method to subscribe to notifications for a characteristic.

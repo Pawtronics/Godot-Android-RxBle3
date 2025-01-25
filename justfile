@@ -24,9 +24,14 @@ build:
     ./gradlew assemble build
     ls -la ./plugin/build/outputs/aar
 
+buildloop:
+    .\build-watch.ps1
 
 logs:
     adb logcat *:S godot:V RxAndroidBleGd:V bluetooth:V bt_stack:V [BT]:V
+
+lesslogs:
+    adb logcat *:S godot:V RxAndroidBleGd:V 
 
 prompt:
     # files-to-prompt . plugin/src/main/AndroidManifest.xml --ignore-gitignore --ignore "plugin/build/*" --ignore "THIRDPARTY.md" --ignore "README.md" -e md -e kt -e kts -e godot -e java -e gd -e md -e gradle -e cfg -e tres -e tcsn  | clip.exe

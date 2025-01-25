@@ -48,10 +48,12 @@ var _RxAndroidBleGd
 
 # Define known characteristic UUIDs
 const CHARACTERISTIC_BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb"
+const CHARACTERISTIC_PWM_GPIO = "12345678-1234-5678-1234-56789abcdef0"
 
 # Characteristic lookup table
 var characteristic_lookup = {
-	CHARACTERISTIC_BATTERY_LEVEL: "battery_level"
+	CHARACTERISTIC_BATTERY_LEVEL: "battery_level",
+	CHARACTERISTIC_PWM_GPIO: "pwm_duty_cycle"
 }
 
 
@@ -126,12 +128,41 @@ func _ready():
 
 func read_battery_level(mac_address: String) -> void:
 	if _RxAndroidBleGd:
-		var characteristicUuid = "00002a19-0000-1000-8000-00805f9b34fb"
+		var characteristicUuid =  CHARACTERISTIC_BATTERY_LEVEL
 		_RxAndroidBleGd.readCharacteristic(mac_address, characteristicUuid)
 	else:
 		printerr("RxAndroidBleGd not loaded; cannot read battery level.")
 
+##
 
+
+func write_pwm_duty_cycle(mac_address: String, duty_cycle: int):
+	if duty_cycle < 0 or duty_cycle > 255:
+		printerr("Invalid duty cycle value: ", duty_cycle)
+		return
+
+	if _RxAndroidBleGd:
+		var value_hex = "%02x" % duty_cycle  # Convert integer to 2-digit hex
+		_RxAndroidBleGd.writeCharacteristic(mac_address, CHARACTERISTIC_PWM_GPIO, value_hex)
+		print("Writing PWM duty cycle: ", duty_cycle, " to ", mac_address)
+	else:
+		printerr("RxAndroidBleGd not loaded; cannot write PWM duty cycle")
+
+func _on_ble_write_characteristic_success(mac_address, characteristicUuid, valueStr):
+	if characteristic_lookup.has(characteristicUuid):
+		var metric = characteristic_lookup[characteristicUuid]
+		match metric:
+			"pwm_duty_cycle":
+				print("PWM duty cycle write successful for: ", mac_address, " -> ", valueStr)
+			_:
+				print("Unhandled write success: ", characteristicUuid)
+	else:
+		printerr("Unknown characteristic UUID write success: ", characteristicUuid)
+
+func _on_ble_write_characteristic_error(mac_address, characteristicUuid, valueStr):
+	printerr("🦨 _on_ble_write_characteristic_error")
+	pass
+	
 func _connect_plugin_signals():
 	
 	# By convention _RxAndroidBleGd  always have ble_* prefix
@@ -149,7 +180,10 @@ func _connect_plugin_signals():
 		# ex: battery_life
 		"ble_read_characteristic_success",
 		"ble_read_characteristic_error",
-		
+	
+		"ble_write_characteristic_success",
+		"ble_write_characteristic_error",
+	
 		# note: there are also local signals
 		]
 

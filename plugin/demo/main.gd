@@ -138,10 +138,10 @@ func _on_ButtonHello_pressed():
 
 func _on_buttonToggle_pressed() -> void:
 	print("_on_buttonToggle_pressed()")
-	# test
-	# BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Unknown")
-	# test string, not responding.
-	# BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Pawtronics-RD1")
-	# valid
-	# BleManager.emit_signal("ble_device_found","7B:F3:49:BF:DE:E9", "Pawtronics-RD1")
-	pass # Replace with function body.
+	for mac_address in BleManager.devices.keys():
+		var device = BleManager.get_device(mac_address)
+		if device:
+			device.toggle_pwm()
+		else:
+			printerr("Device not found for MAC: ", mac_address)	
+	
