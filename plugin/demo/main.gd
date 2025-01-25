@@ -36,7 +36,7 @@ func request_permissions():
 			
 # UI Button Handlers (Assuming you're using Godot's UI system with signals connected to these methods)
 
-func _on_ButtonScan_pressed():
+func _on_ButtonScanPair_pressed():
 	ble_manager.start_scan("Pawtronics-RD1")
 	
 
@@ -58,120 +58,90 @@ func _on_ButtonHello_pressed():
 		printerr("BleManager not initialized")
 
 
-func _on_ButtonConnect_pressed(mac_address: String):
-	ble_manager.connect_device(mac_address)
+#func _on_ButtonConnect_pressed(mac_address: String):
+	#ble_manager.connect_device(mac_address)
 
-func _on_ButtonWrite_pressed(mac_address: String, characteristic_uuid: String, value_hex: String):
-	ble_manager.write_characteristic(mac_address, characteristic_uuid, value_hex)
-
-# Example: Handling a specific button to write a fixed value to RD1
-func _on_ButtonWriteFixedValue_pressed():
-	var rd1_mac = "AA:BB:CC:DD:EE:FF" # Replace with actual RD1 MAC address
-
-	var rd1_char_uuid = "51FF12BB-3ED8-46E5-B4F9-D64E2FEC021B" # Fixed UUID from your Python harness
-	var fixed_value = "0F" # Hex string to trigger the Python harness
-	ble_manager.write_characteristic(rd1_mac, rd1_char_uuid, fixed_value)
-
-# Signal Handler Implementations
+#func _on_ButtonWrite_pressed(mac_address: String, characteristic_uuid: String, value_hex: String):
+	#ble_manager.write_characteristic(mac_address, characteristic_uuid, value_hex)
+#
+## Example: Handling a specific button to write a fixed value to RD1
 
 
+#func _on_scan_started():
+	#print("Scan started")
+#
+#func _on_scan_stopped():
+	#print("Scan stopped")
+#
+#
+#func _on_device_discovered(mac_address, device_name):
+	#print("Device discovered: %s (%s)" % [mac_address, device_name])
+	## Optionally, display in UI or store in a list
+#
+#func _on_scan_error(error_message):
+	#printerr("Scan error: %s" % error_message)
+#
+#func _on_connect_started(mac_address):
+	#print("Connecting to %s" % mac_address)
+#
+#func _on_connected(mac_address):
+	#print("Connected to %s" % mac_address)
+#
+#func _on_connect_error(mac_address, error_message):
+	#printerr("Connection error with %s: %s" % [mac_address, error_message])
+#
+#func _on_disconnected(mac_address):
+	#print("Disconnected from %s" % mac_address)
+#
+#func _on_read_success(mac_address, characteristic_uuid, value):
+	#print("Read from %s [%s]: %s" % [mac_address, characteristic_uuid, value])
+#
+#func _on_read_error(mac_address, characteristic_uuid, error_message):
+	#printerr("Read error from %s [%s]: %s" % [mac_address, characteristic_uuid, error_message])
+#
+#func _on_write_success(mac_address, characteristic_uuid, value):
+	#print("Write to %s [%s]: %s" % [mac_address, characteristic_uuid, value])
+#
+#func _on_write_error(mac_address, characteristic_uuid, error_message):
+	#printerr("Write error to %s [%s]: %s" % [mac_address, characteristic_uuid, error_message])
+#
+#func _on_notification_received(mac_address, characteristic_uuid, value):
+	#print("Notification from %s [%s]: %s" % [mac_address, characteristic_uuid, value])
+#
+#func _on_notification_error(mac_address, characteristic_uuid, error_message):
+	#printerr("Notification error from %s [%s]: %s" % [mac_address, characteristic_uuid, error_message])
+#
+#func _on_pairing_started(mac_address):
+	#print("Pairing started with %s" % mac_address)
+#
+#func _on_pairing_initiated(mac_address):
+	#print("Pairing initiated with %s" % mac_address)
+#
+#func _on_pairing_failed(mac_address, error_message):
+	#printerr("Pairing failed with %s: %s" % [mac_address, error_message])
+#
+#func _on_pairing_error(mac_address, error_message):
+	#printerr("Pairing error with %s: %s" % [mac_address, error_message])
+#
+#func _on_request_mtu_success(mac_address, granted_mtu):
+	#print("MTU request successful for %s: %d" % [mac_address, granted_mtu])
+#
+#func _on_request_mtu_error(mac_address, error_message):
+	#printerr("MTU request error for %s: %s" % [mac_address, error_message])
+#
+#func _on_connection_state_changed(mac_address, connection_state):
+	#print("Connection state for %s: %s" % [mac_address, connection_state])
+#
+#func _on_connection_state_error(mac_address, error_message):
+	#printerr("Connection state error for %s: %s" % [mac_address, error_message])
 
 
-func _on_scan_started():
-	print("Scan started")
-
-func _on_scan_stopped():
-	print("Scan stopped")
-
-func _on_ble_device_found(mac_address, device_name):
-	print("_on_ble_device_found: %s (%s)" % [mac_address, device_name])
-	# Check if the discovered device is Pawtronics-RD1
-	
-	if device_name == "Pawtronics-RD1":
-		print("Pawtronics-RD1 found! Attempting to pair...")
-		BleManager.pair_device(mac_address)
-	else:
-		print("#NotAPawtronics-WTF?")	# this line should never be reached.
-		
-		# await get_tree().create_timer(3.0).timeout
-		# write_characteristic(mac_address, "00002A00-0000-1000-8000-00805f9b34fb", "010203")
-
-		#TODO!
-		# pair_device(mac_address)
-		# Optionally, add a delay before writing
-		# await get_tree().create_timer(3.0).timeout
-		# write_characteristic(mac_address, "00002A00-0000-1000-8000-00805f9b34fb", "010203")	
-		
-	# Optionally, display in UI or store in a list
-
-func _on_device_discovered(mac_address, device_name):
-	print("Device discovered: %s (%s)" % [mac_address, device_name])
-	# Optionally, display in UI or store in a list
-
-func _on_scan_error(error_message):
-	printerr("Scan error: %s" % error_message)
-
-func _on_connect_started(mac_address):
-	print("Connecting to %s" % mac_address)
-
-func _on_connected(mac_address):
-	print("Connected to %s" % mac_address)
-
-func _on_connect_error(mac_address, error_message):
-	printerr("Connection error with %s: %s" % [mac_address, error_message])
-
-func _on_disconnected(mac_address):
-	print("Disconnected from %s" % mac_address)
-
-func _on_read_success(mac_address, characteristic_uuid, value):
-	print("Read from %s [%s]: %s" % [mac_address, characteristic_uuid, value])
-
-func _on_read_error(mac_address, characteristic_uuid, error_message):
-	printerr("Read error from %s [%s]: %s" % [mac_address, characteristic_uuid, error_message])
-
-func _on_write_success(mac_address, characteristic_uuid, value):
-	print("Write to %s [%s]: %s" % [mac_address, characteristic_uuid, value])
-
-func _on_write_error(mac_address, characteristic_uuid, error_message):
-	printerr("Write error to %s [%s]: %s" % [mac_address, characteristic_uuid, error_message])
-
-func _on_notification_received(mac_address, characteristic_uuid, value):
-	print("Notification from %s [%s]: %s" % [mac_address, characteristic_uuid, value])
-
-func _on_notification_error(mac_address, characteristic_uuid, error_message):
-	printerr("Notification error from %s [%s]: %s" % [mac_address, characteristic_uuid, error_message])
-
-func _on_pairing_started(mac_address):
-	print("Pairing started with %s" % mac_address)
-
-func _on_pairing_initiated(mac_address):
-	print("Pairing initiated with %s" % mac_address)
-
-func _on_pairing_failed(mac_address, error_message):
-	printerr("Pairing failed with %s: %s" % [mac_address, error_message])
-
-func _on_pairing_error(mac_address, error_message):
-	printerr("Pairing error with %s: %s" % [mac_address, error_message])
-
-func _on_request_mtu_success(mac_address, granted_mtu):
-	print("MTU request successful for %s: %d" % [mac_address, granted_mtu])
-
-func _on_request_mtu_error(mac_address, error_message):
-	printerr("MTU request error for %s: %s" % [mac_address, error_message])
-
-func _on_connection_state_changed(mac_address, connection_state):
-	print("Connection state for %s: %s" % [mac_address, connection_state])
-
-func _on_connection_state_error(mac_address, error_message):
-	printerr("Connection state error for %s: %s" % [mac_address, error_message])
-
-
-func _on_button_pair_pressed() -> void:
+func _on_buttonToggle_pressed() -> void:
 	print("_on_button_pair_pressed()")
 	# test
 	BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Unknown")
 	# test string, not responding.
-	BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Pawtronics-RD1")
+	# BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Pawtronics-RD1")
 	# valid
-	BleManager.emit_signal("ble_device_found","7B:F3:49:BF:DE:E9", "Pawtronics-RD1")
+	# BleManager.emit_signal("ble_device_found","7B:F3:49:BF:DE:E9", "Pawtronics-RD1")
 	pass # Replace with function body.

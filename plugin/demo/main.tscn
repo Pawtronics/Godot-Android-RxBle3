@@ -5,12 +5,13 @@
 [node name="Main" type="Node2D"]
 script = ExtResource("1_j0gfq")
 
-[node name="ButtonPair" type="Button" parent="."]
+[node name="ButtonToggle" type="Button" parent="."]
 offset_left = 737.0
 offset_top = 80.0
 offset_right = 1037.0
 offset_bottom = 139.0
-text = "Pair
+text = "Toggle on/off
+
 "
 
 [node name="ButtonHello" type="Button" parent="."]
@@ -26,13 +27,14 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "Hello Droid"
 
-[node name="ButtonScan" type="Button" parent="."]
+[node name="ButtonScanPair" type="Button" parent="."]
 offset_left = 376.0
 offset_top = 81.0
 offset_right = 676.0
 offset_bottom = 140.0
-text = "Start scan"
+text = "Scan + Pair
+"
 
-[connection signal="pressed" from="ButtonPair" to="." method="_on_button_pair_pressed"]
+[connection signal="pressed" from="ButtonToggle" to="." method="_on_buttonToggle_pressed"]
 [connection signal="pressed" from="ButtonHello" to="." method="_on_ButtonHello_pressed"]
-[connection signal="pressed" from="ButtonScan" to="." method="_on_ButtonScan_pressed"]
+[connection signal="pressed" from="ButtonScanPair" to="." method="_on_ButtonScanPair_pressed"]

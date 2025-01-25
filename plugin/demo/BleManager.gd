@@ -22,27 +22,36 @@ extends Node
 signal scan_started
 signal scan_stopped
 signal scan_progress
+
+## ble_ are incoming from RxAndroidBleGd
 signal ble_device_found(mac_address, device_name)
+signal ble_pairing_init(macAddress)
+signal ble_pairing_error(macAddress)
+
+
+## non ble_ are godot facing
+signal pairing_init(macAddress)
+
 # signal device_found(mac_address, device_name)
-signal scan_error(error_message)
-signal connect_started(mac_address)
-signal connected(mac_address)
-signal connect_error(mac_address, error_message)
-signal disconnected(mac_address)
-signal read_characteristic_success(mac_address, characteristic_uuid, value)
-signal read_characteristic_error(mac_address, characteristic_uuid, error_message)
-signal write_characteristic_success(mac_address, characteristic_uuid, value)
-signal write_characteristic_error(mac_address, characteristic_uuid, error_message)
-signal notification_received(mac_address, characteristic_uuid, value)
-signal notification_error(mac_address, characteristic_uuid, error_message)
-signal pairing_started(mac_address)
-signal pairing_initiated(mac_address)
-signal pairing_failed(mac_address, error_message)
-signal pairing_error(mac_address, error_message)
-signal request_mtu_success(mac_address, granted_mtu)
-signal request_mtu_error(mac_address, error_message)
-signal connection_state_changed(mac_address, connection_state)
-signal connection_state_error(mac_address, error_message)
+#signal scan_error(error_message)
+#signal connect_started(mac_address)
+#signal connected(mac_address)
+#signal connect_error(mac_address, error_message)
+#signal disconnected(mac_address)
+#signal read_characteristic_success(mac_address, characteristic_uuid, value)
+#signal read_characteristic_error(mac_address, characteristic_uuid, error_message)
+#signal write_characteristic_success(mac_address, characteristic_uuid, value)
+#signal write_characteristic_error(mac_address, characteristic_uuid, error_message)
+#signal notification_received(mac_address, characteristic_uuid, value)
+#signal notification_error(mac_address, characteristic_uuid, error_message)
+#signal pairing_started(mac_address)
+#signal pairing_initiated(mac_address)
+#signal pairing_failed(mac_address, error_message)
+#signal pairing_error(mac_address, error_message)
+#signal request_mtu_success(mac_address, granted_mtu)
+#signal request_mtu_error(mac_address, error_message)
+#signal connection_state_changed(mac_address, connection_state)
+#signal connection_state_error(mac_address, error_message)
 
 var _plugin_name = "RxAndroidBleGd"
 var _RxAndroidBleGd
@@ -68,13 +77,39 @@ func _ready():
 			print("BleManager is _ready")			
 	else:
 		printerr("Couldn't find plugin " + _plugin_name)
+	_connect_local_signals()
+
+
+func _connect_local_signals():
+	var ourSignals = [
+		"pairing_init"
+	]
+
+	for xsignal in ourSignals:
+		if has_signal(xsignal):
+			var method_name = "_on_" + xsignal
+			if has_method(method_name):
+				_RxAndroidBleGd.connect(xsignal, Callable(self, method_name))
+				print("signal connected ", xsignal, " to ", method_name)
+			else:
+				printerr("Method not found for signal:", xsignal)
+		else:
+			printerr("Signal not found in BleManager:", xsignal)
 
 
 func _connect_plugin_signals():
-	var ble_signals = [
+	
+	# RABleGd _RxAndroidBleGd
+	var RxAndroidBleGd_signals = [
 		#"ble_scan_started",
 		#"ble_scan_stopped",
 		"ble_device_found",
+		"ble_pairing_init",
+		"ble_pairing_error",
+		"ble_pairing_success",
+		
+		"pairing_init"
+
 		#"ble_scan_error",
 		#"connect_started",
 		#"connected",
@@ -88,7 +123,6 @@ func _connect_plugin_signals():
 		#_RxAndroidBleGd.connect("notification_received", self, "_on_notification_received")
 		#_RxAndroidBleGd.connect("notification_error", self, "_on_notification_error")
 		#_RxAndroidBleGd.connect("pairing_started", self, "_on_pairing_started")
-		#_RxAndroidBleGd.connect("pairing_initiated", self, "_on_pairing_initiated")
 		#_RxAndroidBleGd.connect("pairing_failed", self, "_on_pairing_failed")
 		#_RxAndroidBleGd.connect("pairing_error", self, "_on_pairing_error")
 		#_RxAndroidBleGd.connect("request_mtu_success", self, "_on_request_mtu_success")
@@ -98,7 +132,7 @@ func _connect_plugin_signals():
 		]
 
 	# connect all the signals
-	for signalx in ble_signals:
+	for signalx in RxAndroidBleGd_signals:
 		if BleManager.has_signal(signalx):
 			var method_name = "_on_" + signalx
 			if has_method(method_name):
@@ -107,7 +141,7 @@ func _connect_plugin_signals():
 			else:
 				printerr("Method not found for signal:", signalx)
 		else:
-			printerr("Signal not found in BleManager:", signalx)
+			printerr("Signal not found in _RxAndroidBleGd:", signalx)
 
 
 func start_scan(device_name = "", mac_address = "", service_uuid = ""):
@@ -115,7 +149,7 @@ func start_scan(device_name = "", mac_address = "", service_uuid = ""):
 		_start_scan_timer()
 		_RxAndroidBleGd.startScan(device_name, mac_address, service_uuid)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 
 func _start_scan_timer():
@@ -147,59 +181,60 @@ func stop_scan():
 		# emit_signal("scan_stopped")
 		# emit_signal("scan_progress", 0)  
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 
 func connect_device(mac_address):
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.connectToDevice(mac_address)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 func disconnect_device(mac_address):
+	print("BleManager.disconnect_device: ", mac_address)
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.disconnectDevice(mac_address)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 		
 func read_characteristic(mac_address, characteristic_uuid):
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.readCharacteristic(mac_address, characteristic_uuid)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 func write_characteristic(mac_address, characteristic_uuid, value_hex):
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.writeCharacteristic(mac_address, characteristic_uuid, value_hex)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 func subscribe_notifications(mac_address, characteristic_uuid):
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.subscribeToNotifications(mac_address, characteristic_uuid)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 func unsubscribe_notifications(mac_address, characteristic_uuid):
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.unsubscribeFromNotifications(mac_address, characteristic_uuid)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
 func pair_device(mac_address):
-	print("pair_device ", mac_address)
 	if _RxAndroidBleGd:
-		_RxAndroidBleGd.pairDevice(mac_address)
+		print("pair_device ", mac_address)	
+		# _RxAndroidBleGd.pairDevice(mac_address)
+		_RxAndroidBleGd.connectToDevice(mac_address)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded cannot pair_device")
 
 func request_mtu(mac_address, mtu_size):
 	if _RxAndroidBleGd:
 		_RxAndroidBleGd.requestMtu(mac_address, mtu_size)
 	else:
-		printerr("BLE Plugin not loaded")
+		printerr("RxAndroidBleGd not loaded")
 
-# Signal handler methods to re-emit or process signals
 
 func _on_ble_scan_started():
 	emit_signal("scan_started")
@@ -215,15 +250,30 @@ func _on_scan_progress(remains):
 	pass
 
 func _on_ble_device_found(mac_address, device_name):
+	print("_on_ble_device_found ",mac_address, " ", device_name)
 	
 	## 🤔 I don't think next line is necessary (might cause a loop)
 	# emit_signal("ble_device_found", mac_address, device_name)
-	emit_signal("pair_device", mac_address, device_name)
-	
-	## this print is never called
-	print("_on_ble_device_found ",mac_address, " ", device_name)
-	
+	# emit_signal("pair_device", mac_address, device_name)
+	pair_device(mac_address)
 	pass
+	
+
+
+func _on_ble_pairing_init(mac_address):
+	print("_on_ble_pairing_init() .. is empty function")
+	emit_signal("pairing_init", mac_address)
+
+func _on_ble_pairing_error(mac_address, error_message):
+	emit_signal("pairing_error", mac_address, error_message)
+
+func _on_connected(mac_address):
+	emit_signal("connected", mac_address)
+
+func _on_disconnected(mac_address):
+	emit_signal("disconnected", mac_address)
+
+
 
 func _on_scan_error(error_message):
 	emit_signal("scan_error", error_message)
@@ -231,14 +281,10 @@ func _on_scan_error(error_message):
 func _on_connect_started(mac_address):
 	emit_signal("connect_started", mac_address)
 
-func _on_connected(mac_address):
-	emit_signal("connected", mac_address)
 
 func _on_connect_error(mac_address, error_message):
 	emit_signal("connect_error", mac_address, error_message)
 
-func _on_disconnected(mac_address):
-	emit_signal("disconnected", mac_address)
 
 func _on_read_success(mac_address, characteristic_uuid, value):
 	emit_signal("read_characteristic_success", mac_address, characteristic_uuid, value)
@@ -261,14 +307,6 @@ func _on_notification_error(mac_address, characteristic_uuid, error_message):
 func _on_pairing_started(mac_address):
 	emit_signal("pairing_started", mac_address)
 
-func _on_pairing_initiated(mac_address):
-	emit_signal("pairing_initiated", mac_address)
-
-func _on_pairing_failed(mac_address, error_message):
-	emit_signal("pairing_failed", mac_address, error_message)
-
-func _on_pairing_error(mac_address, error_message):
-	emit_signal("pairing_error", mac_address, error_message)
 
 func _on_request_mtu_success(mac_address, granted_mtu):
 	emit_signal("request_mtu_success", mac_address, granted_mtu)

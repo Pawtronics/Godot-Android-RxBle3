@@ -80,20 +80,23 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             SignalInfo("ble_scan_started"),
             SignalInfo("ble_scan_stopped"),
             SignalInfo("ble_device_found", String::class.java, String::class.java),
-            // FUTURE: 
-            SignalInfo("ble_scan_error", String::class.java),
-            SignalInfo("ble_connected", String::class.java),
-            SignalInfo("ble_connect_error", String::class.java, String::class.java),
-            SignalInfo("ble_disconnected", String::class.java),
-            SignalInfo("ble_notification_received", String::class.java, String::class.java, String::class.java),
-            SignalInfo("ble_notification_error", String::class.java, String::class.java, String::class.java),
-            SignalInfo("ble_pairing_started", String::class.java),
-            SignalInfo("ble_pairing_failed", String::class.java, String::class.java),
+            // TESTING:
+            SignalInfo("ble_pairing_init", String::class.java),
             SignalInfo("ble_pairing_error", String::class.java, String::class.java),
-            SignalInfo("ble_request_mtu_success", String::class.java, Int::class.java),
-            SignalInfo("ble_request_mtu_error", String::class.java, String::class.java),
-            SignalInfo("ble_connection_state_changed", String::class.java, String::class.java),
-            SignalInfo("ble_connection_state_error", String::class.java, String::class.java)
+            SignalInfo("ble_connected", String::class.java),
+            SignalInfo("ble_characteristic_discovered", String::class.java),
+            SignalInfo("ble_service_discovered", String::class.java),
+            
+            // FUTURE: 
+            // SignalInfo("ble_scan_error", String::class.java),
+            // SignalInfo("ble_connect_error", String::class.java, String::class.java),
+            // SignalInfo("ble_disconnected", String::class.java),
+            // SignalInfo("ble_notification_received", String::class.java, String::class.java, String::class.java),
+            // SignalInfo("ble_notification_error", String::class.java, String::class.java, String::class.java),
+            // SignalInfo("ble_request_mtu_success", String::class.java, Int::class.java),
+            // SignalInfo("ble_request_mtu_error", String::class.java, String::class.java),
+            // SignalInfo("ble_connection_state_changed", String::class.java, String::class.java),
+            // SignalInfo("ble_connection_state_error", String::class.java, String::class.java)
         )
     }
 
@@ -503,7 +506,6 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun pairDevice(macAddress: String) {
         Log.v(TAG, "pairDevice() called with MAC: $macAddress")
-        sendGodotEvent("ble_pairing_started", macAddress)
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val bluetoothDevice: BluetoothDevice = device.bluetoothDevice
@@ -516,6 +518,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             return
         }
 
+        
+        sendGodotEvent("ble_pairing_init", macAddress)
+
         getDeviceDisposables(macAddress).add(
             rxBleClient.observeStateChanges()
                 .filter { it == RxBleClient.State.READY }
@@ -526,10 +531,10 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
                     val success = bluetoothDevice.createBond()
                     if (success) {
                         Log.v(TAG, "Pairing initiated with $macAddress")
-                        sendGodotEvent("ble_pairing_initiated", macAddress)
+                        sendGodotEvent("ble_pairing_success", macAddress)
                     } else {
                         Log.e(TAG, "Pairing initiation failed with $macAddress")
-                        sendGodotEvent("ble_pairing_failed", macAddress, "Failed to initiate pairing")
+                        sendGodotEvent("ble_pairing_error", macAddress, "Failed to initiate pairing")
                     }
                 }, { throwable ->
                     Log.e(TAG, "Pairing observation failed: ${throwable.message}")
