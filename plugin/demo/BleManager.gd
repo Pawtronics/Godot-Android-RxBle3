@@ -31,13 +31,13 @@ signal ble_pairing_init(macAddress)
 signal ble_pairing_error(macAddress)
 
 # characteristics like battery life
-signal ble_read_characteristic_started(mac_address, characteristicUuid)
+# signal ble_read_characteristic_started(mac_address, characteristicUuid)
 signal ble_read_characteristic_success(mac_address, characteristicUuid, value)
 signal ble_read_characteristic_error(mac_address, characteristicUuid, errMsg)
 
 ## non ble_ are godot facing
-
-signal pairing_init(macAddress)
+#
+#signal pairing_init(macAddress)
 
 # Singleton instance for managing BLE devices
 signal device_created(mac_address)
@@ -62,7 +62,7 @@ var devices: Dictionary = {}
 
 func _on_ble_device_found(mac_address, device_name):
 	if not devices.has(mac_address):
-		var device_node = preload("res://addons/RxAndroidBleGd/PawtronicsDeviceNode.gd").new()
+		var device_node = preload("res://PawtronicsDeviceNode.gd").new()
 		device_node.initialize(mac_address, device_name)
 		add_child(device_node)
 		devices[mac_address] = device_node
@@ -92,6 +92,9 @@ func show_debug_toast(message: String):
 		_RxAndroidBleGd.showDebugToast(message)
 
 
+
+
+
 func _ready():
 	if Engine.has_singleton(_plugin_name):
 		_RxAndroidBleGd = Engine.get_singleton(_plugin_name)
@@ -100,12 +103,9 @@ func _ready():
 			print("BleManager is _ready")
 	else:
 		printerr("Couldn't find plugin " + _plugin_name)
-	_connect_local_signals()
 
-
-func _connect_local_signals():
 	var ourSignals = [
-		"pairing_init"
+		# "pairing_init"
 	]
 
 	for xsignal in ourSignals:
@@ -113,11 +113,13 @@ func _connect_local_signals():
 			var method_name = "_on_" + xsignal
 			if has_method(method_name):
 				_RxAndroidBleGd.connect(xsignal, Callable(self, method_name))
-				print("signal connected ", xsignal, " to ", method_name)
+				print("local signal connected ", xsignal, " to ", method_name)
 			else:
-				printerr("Method not found for signal:", xsignal)
+				printerr("Local Method not found for signal:", xsignal)
 		else:
-			printerr("Signal not found in BleManager:", xsignal)
+			printerr("Local Signal not found in BleManager:", xsignal)
+
+
 
 
 # Add this helper function somewhere near other read functions.
@@ -278,22 +280,39 @@ func _on_scan_progress(remains):
 	pass
 
 
-func _on_ble_read_characteristic_success(mac_address, characteristicUuid, value):
+# Helper function to check if a string is a valid hex number
+func _is_hex_string(value: String) -> bool:
+	var regex = RegEx.new()
+	regex.compile("^[0-9a-fA-F]+$")
+	return regex.search(value) != null
+
+func _on_ble_read_characteristic_success(mac_address, characteristicUuid, valueStr):
 	var device = get_device(mac_address)
 	if device:
 		if characteristic_lookup.has(characteristicUuid):
 			var metric = characteristic_lookup[characteristicUuid]
 			match metric:
 				"battery_level":
-					var battery_level = value.hex_encode().hex_to_int()
-					device.battery_level = battery_level
-					print("Updated battery level for: ", mac_address, " -> ", battery_level, "%")
+					if _is_hex_string(valueStr):
+						# var battery_level = int("0x" + valueStr)
+						var battery_level = valueStr.hex_to_int()
+						device.battery_level = battery_level
+						print("Updated battery level for: ", mac_address, " -> ", battery_level, "%")
+					elif valueStr.is_valid.int():
+						var battery_level = valueStr.to_int()
+					else:
+						printerr("invalid battery_level: ", valueStr)
+						#var battery_level = valueStr.to_ascii_buffer().get_u8(0)  # Extract first byte
+						#device.battery_level = battery_level
+						#print("Updated battery level for: ", mac_address, " -> ", battery_level, "%")
 				_:
 					print("Unhandled characteristic: ", characteristicUuid)
 		else:
 			printerr("Unknown characteristic UUID received: ", characteristicUuid)
 	else:
 		printerr("Device not found for MAC: ", mac_address)
+
+
 
 
 func _on_ble_read_characteristic_error(mac_address, charactersticUuid, errStr):
