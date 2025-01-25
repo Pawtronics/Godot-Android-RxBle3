@@ -85,8 +85,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             SignalInfo("ble_pairing_error", String::class.java, String::class.java),
             SignalInfo("ble_connected", String::class.java),
             SignalInfo("ble_characteristic_discovered", String::class.java),
-            SignalInfo("ble_service_discovered", String::class.java),
-            
+            // 
+            SignalInfo("ble_read_characteristic_success", String::class.java, String::class.java, String::class.java),
+            SignalInfo("ble_read_characteristic_error", String::class.java),
             // FUTURE: 
             // SignalInfo("ble_scan_error", String::class.java),
             // SignalInfo("ble_connect_error", String::class.java, String::class.java),
@@ -132,6 +133,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             |BLE State: $bleState
         """.trimMargin()
     }
+
 
 
     @UsedByGodot
@@ -271,8 +273,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun connectToDevice(macAddress: String) {
         Log.v(TAG, "connectToDevice() called with MAC: $macAddress")
-        debugToast("Connecting to $macAddress")
-        sendGodotEvent("ble_connect_started", macAddress)
+
+        // debugToast("Connecting to $macAddress")
+        // sendGodotEvent("ble_event", macAddress, "connectToDevice()")
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val deviceDisposables = getDeviceDisposables(macAddress)
@@ -346,7 +349,8 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     @UsedByGodot
     fun readCharacteristic(macAddress: String, characteristicUuid: String) {
         Log.v(TAG, "readCharacteristic() called for $macAddress, UUID: $characteristicUuid")
-        sendGodotEvent("ble_read_characteristic_started", macAddress, characteristicUuid)
+        // sendGodotEvent("ble_read_characteristic_started", macAddress, characteristicUuid)
+
 
         val device: RxBleDevice = rxBleClient.getBleDevice(macAddress)
         val uuid = UUID.fromString(characteristicUuid)

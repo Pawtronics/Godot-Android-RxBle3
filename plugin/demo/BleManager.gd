@@ -18,6 +18,7 @@ extends Node
 
 
 
+
 # Signal definitions to communicate BLE events to the main application
 signal scan_started
 signal scan_stopped
@@ -25,39 +26,61 @@ signal scan_progress
 
 ## ble_ are incoming from RxAndroidBleGd
 signal ble_device_found(mac_address, device_name)
+
 signal ble_pairing_init(macAddress)
 signal ble_pairing_error(macAddress)
 
+# characteristics like battery life
+signal ble_read_characteristic_started(mac_address, characteristicUuid)
+signal ble_read_characteristic_success(mac_address, characteristicUuid, value)
+signal ble_read_characteristic_error(mac_address, characteristicUuid, errMsg)
 
 ## non ble_ are godot facing
+
 signal pairing_init(macAddress)
 
-# signal device_found(mac_address, device_name)
-#signal scan_error(error_message)
-#signal connect_started(mac_address)
-#signal connected(mac_address)
-#signal connect_error(mac_address, error_message)
-#signal disconnected(mac_address)
-#signal read_characteristic_success(mac_address, characteristic_uuid, value)
-#signal read_characteristic_error(mac_address, characteristic_uuid, error_message)
-#signal write_characteristic_success(mac_address, characteristic_uuid, value)
-#signal write_characteristic_error(mac_address, characteristic_uuid, error_message)
-#signal notification_received(mac_address, characteristic_uuid, value)
-#signal notification_error(mac_address, characteristic_uuid, error_message)
-#signal pairing_started(mac_address)
-#signal pairing_initiated(mac_address)
-#signal pairing_failed(mac_address, error_message)
-#signal pairing_error(mac_address, error_message)
-#signal request_mtu_success(mac_address, granted_mtu)
-#signal request_mtu_error(mac_address, error_message)
-#signal connection_state_changed(mac_address, connection_state)
-#signal connection_state_error(mac_address, error_message)
+# Singleton instance for managing BLE devices
+signal device_created(mac_address)
+signal device_removed(mac_address)
 
 var _plugin_name = "RxAndroidBleGd"
 var _RxAndroidBleGd
 
+# Define known characteristic UUIDs
+const CHARACTERISTIC_BATTERY_LEVEL = "00002a19-0000-1000-8000-00805f9b34fb"
+
+# Characteristic lookup table
+var characteristic_lookup = {
+	CHARACTERISTIC_BATTERY_LEVEL: "battery_level"
+}
+
+
 var scan_timer: Timer = null
 var remaining_time: int = 30  # 30-second scan timeout
+
+var devices: Dictionary = {}
+
+func _on_ble_device_found(mac_address, device_name):
+	if not devices.has(mac_address):
+		var device_node = preload("res://addons/RxAndroidBleGd/PawtronicsDeviceNode.gd").new()
+		device_node.initialize(mac_address, device_name)
+		add_child(device_node)
+		devices[mac_address] = device_node
+		emit_signal("device_created", mac_address)
+		await get_tree().create_timer(3.0).timeout
+		device_node.read_battery_level()
+
+
+func remove_device(mac_address):
+	if devices.has(mac_address):
+		devices[mac_address].queue_free()
+		devices.erase(mac_address)
+		emit_signal("device_removed", mac_address)
+
+func get_device(mac_address):
+	return devices.get(mac_address, null)
+
+##
 
 func get_diagnostics() -> String:
 	if _RxAndroidBleGd:
@@ -74,7 +97,7 @@ func _ready():
 		_RxAndroidBleGd = Engine.get_singleton(_plugin_name)
 		if _RxAndroidBleGd:
 			_connect_plugin_signals()
-			print("BleManager is _ready")			
+			print("BleManager is _ready")
 	else:
 		printerr("Couldn't find plugin " + _plugin_name)
 	_connect_local_signals()
@@ -97,38 +120,35 @@ func _connect_local_signals():
 			printerr("Signal not found in BleManager:", xsignal)
 
 
+# Add this helper function somewhere near other read functions.
+
+func read_battery_level(mac_address: String) -> void:
+	if _RxAndroidBleGd:
+		var characteristicUuid = "00002a19-0000-1000-8000-00805f9b34fb"
+		_RxAndroidBleGd.readCharacteristic(mac_address, characteristicUuid)
+	else:
+		printerr("RxAndroidBleGd not loaded; cannot read battery level.")
+
+
 func _connect_plugin_signals():
 	
-	# RABleGd _RxAndroidBleGd
+	# By convention _RxAndroidBleGd  always have ble_* prefix
+	# normal non-ble_* prefix is outgoing to main
+
 	var RxAndroidBleGd_signals = [
 		#"ble_scan_started",
 		#"ble_scan_stopped",
-		"ble_device_found",
-		"ble_pairing_init",
-		"ble_pairing_error",
-		"ble_pairing_success",
+		"ble_device_found",			# success
+		"ble_pairing_init",			# start
+		"ble_pairing_error",		# 💩
+		# "ble_pairing_success",	# 👆 use ble_device_found()
 		
-		"pairing_init"
-
-		#"ble_scan_error",
-		#"connect_started",
-		#"connected",
-		#"connect_error",
-		#"disconnected"
-		# FUTURE: 
-		#_RxAndroidBleGd.connect("read_characteristic_success", self, "_on_read_success")
-		#_RxAndroidBleGd.connect("read_characteristic_error", self, "_on_read_error")
-		#_RxAndroidBleGd.connect("write_characteristic_success", self, "_on_write_success")
-		#_RxAndroidBleGd.connect("write_characteristic_error", self, "_on_write_error")
-		#_RxAndroidBleGd.connect("notification_received", self, "_on_notification_received")
-		#_RxAndroidBleGd.connect("notification_error", self, "_on_notification_error")
-		#_RxAndroidBleGd.connect("pairing_started", self, "_on_pairing_started")
-		#_RxAndroidBleGd.connect("pairing_failed", self, "_on_pairing_failed")
-		#_RxAndroidBleGd.connect("pairing_error", self, "_on_pairing_error")
-		#_RxAndroidBleGd.connect("request_mtu_success", self, "_on_request_mtu_success")
-		#_RxAndroidBleGd.connect("request_mtu_error", self, "_on_request_mtu_error")
-		#_RxAndroidBleGd.connect("connection_state_changed", self, "_on_connection_state_changed")
-		#_RxAndroidBleGd.connect("connection_state_error", self, "_on_connection_state_error")
+		
+		# ex: battery_life
+		"ble_read_characteristic_success",
+		"ble_read_characteristic_error",
+		
+		# note: there are also local signals
 		]
 
 	# connect all the signals
@@ -223,7 +243,7 @@ func unsubscribe_notifications(mac_address, characteristic_uuid):
 
 func pair_device(mac_address):
 	if _RxAndroidBleGd:
-		print("pair_device ", mac_address)	
+		print("pair_device ", mac_address)
 		# _RxAndroidBleGd.pairDevice(mac_address)
 		_RxAndroidBleGd.connectToDevice(mac_address)
 	else:
@@ -235,6 +255,14 @@ func request_mtu(mac_address, mtu_size):
 	else:
 		printerr("RxAndroidBleGd not loaded")
 
+
+func _on_ble_event(mac_address, eventStr):
+	# if eventStr str suffix is () see if it's looking for a signal
+	# task: emit a signal only if it exists
+	pass
+	
+
+	
 
 func _on_ble_scan_started():
 	emit_signal("scan_started")
@@ -249,16 +277,28 @@ func _on_scan_progress(remains):
 	# emit_signal("scan_progress", remains)
 	pass
 
-func _on_ble_device_found(mac_address, device_name):
-	print("_on_ble_device_found ",mac_address, " ", device_name)
-	
-	## 🤔 I don't think next line is necessary (might cause a loop)
-	# emit_signal("ble_device_found", mac_address, device_name)
-	# emit_signal("pair_device", mac_address, device_name)
-	pair_device(mac_address)
-	pass
-	
 
+func _on_ble_read_characteristic_success(mac_address, characteristicUuid, value):
+	var device = get_device(mac_address)
+	if device:
+		if characteristic_lookup.has(characteristicUuid):
+			var metric = characteristic_lookup[characteristicUuid]
+			match metric:
+				"battery_level":
+					var battery_level = value.hex_encode().hex_to_int()
+					device.battery_level = battery_level
+					print("Updated battery level for: ", mac_address, " -> ", battery_level, "%")
+				_:
+					print("Unhandled characteristic: ", characteristicUuid)
+		else:
+			printerr("Unknown characteristic UUID received: ", characteristicUuid)
+	else:
+		printerr("Device not found for MAC: ", mac_address)
+
+
+func _on_ble_read_characteristic_error(mac_address, charactersticUuid, errStr):
+	printerr("🦨 _on_ble_read_characteristic_error: ", charactersticUuid, errStr)
+	pass
 
 func _on_ble_pairing_init(mac_address):
 	print("_on_ble_pairing_init() .. is empty function")

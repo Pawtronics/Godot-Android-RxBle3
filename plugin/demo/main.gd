@@ -137,9 +137,9 @@ func _on_ButtonHello_pressed():
 
 
 func _on_buttonToggle_pressed() -> void:
-	print("_on_button_pair_pressed()")
+	print("_on_buttonToggle_pressed()")
 	# test
-	BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Unknown")
+	# BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Unknown")
 	# test string, not responding.
 	# BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Pawtronics-RD1")
 	# valid
