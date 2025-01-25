@@ -1,9 +1,11 @@
 # main.gd
 extends Node2D
 
+
 # Reference to the BleManager singleton
 var ble_manager = BleManager
 var GodotOS = OS
+
 
 func _ready():
 	if ble_manager:
@@ -11,7 +13,7 @@ func _ready():
 		#ble_manager._connect_plugin_signals()
 		print("main+ble_manager is _ready")
 		ble_manager.connect("scan_progress", Callable(self, "_on_scan_progress"))
-		ble_manager.connect("device_found", Callable(self, "_on_device_found"))
+		ble_manager.connect("ble_device_found", Callable(self, "_on_ble_device_found"))
 	else:
 		printerr("BleManager singleton not found")
 
@@ -35,7 +37,8 @@ func request_permissions():
 # UI Button Handlers (Assuming you're using Godot's UI system with signals connected to these methods)
 
 func _on_ButtonScan_pressed():
-	ble_manager.start_scan()
+	ble_manager.start_scan("Pawtronics-RD1")
+	
 
 func _on_scan_progress(seconds_left):
 	print("main.gd on_scan_progress ", seconds_left)
@@ -64,6 +67,7 @@ func _on_ButtonWrite_pressed(mac_address: String, characteristic_uuid: String, v
 # Example: Handling a specific button to write a fixed value to RD1
 func _on_ButtonWriteFixedValue_pressed():
 	var rd1_mac = "AA:BB:CC:DD:EE:FF" # Replace with actual RD1 MAC address
+
 	var rd1_char_uuid = "51FF12BB-3ED8-46E5-B4F9-D64E2FEC021B" # Fixed UUID from your Python harness
 	var fixed_value = "0F" # Hex string to trigger the Python harness
 	ble_manager.write_characteristic(rd1_mac, rd1_char_uuid, fixed_value)
@@ -79,8 +83,25 @@ func _on_scan_started():
 func _on_scan_stopped():
 	print("Scan stopped")
 
-func _on_device_found(mac_address, device_name):
-	print("Device found: %s (%s)" % [mac_address, device_name])
+func _on_ble_device_found(mac_address, device_name):
+	print("_on_ble_device_found: %s (%s)" % [mac_address, device_name])
+	# Check if the discovered device is Pawtronics-RD1
+	
+	if device_name == "Pawtronics-RD1":
+		print("Pawtronics-RD1 found! Attempting to pair...")
+		BleManager.pair_device(mac_address)
+	else:
+		print("#NotAPawtronics-WTF?")	# this line should never be reached.
+		
+		# await get_tree().create_timer(3.0).timeout
+		# write_characteristic(mac_address, "00002A00-0000-1000-8000-00805f9b34fb", "010203")
+
+		#TODO!
+		# pair_device(mac_address)
+		# Optionally, add a delay before writing
+		# await get_tree().create_timer(3.0).timeout
+		# write_characteristic(mac_address, "00002A00-0000-1000-8000-00805f9b34fb", "010203")	
+		
 	# Optionally, display in UI or store in a list
 
 func _on_device_discovered(mac_address, device_name):
@@ -143,3 +164,14 @@ func _on_connection_state_changed(mac_address, connection_state):
 
 func _on_connection_state_error(mac_address, error_message):
 	printerr("Connection state error for %s: %s" % [mac_address, error_message])
+
+
+func _on_button_pair_pressed() -> void:
+	print("_on_button_pair_pressed()")
+	# test
+	BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Unknown")
+	# test string, not responding.
+	BleManager.emit_signal("ble_device_found", "00:11:22:33:44:55", "Pawtronics-RD1")
+	# valid
+	BleManager.emit_signal("ble_device_found","7B:F3:49:BF:DE:E9", "Pawtronics-RD1")
+	pass # Replace with function body.

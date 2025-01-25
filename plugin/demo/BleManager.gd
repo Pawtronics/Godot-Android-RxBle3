@@ -4,6 +4,7 @@ extends Node
 ## ⚠️ BleManager *MUST AVOID* including any Pawtronics device logic
 # Acts as a bridge between Godot UI and the Android plugin.
 # Listens for signals emitted by GodotAndroidPlugin.kt and re-emits simplified versions for the UI.
+# Future device state, high level background tasks (ex: audio file transfer) related to IOT intra-device connectivity
 # Should NOT duplicate signal names from the Android plugin to avoid infinite loops.
 #
 # If signals have the same name across the Android plugin and the Godot layers, they might cause recursive emissions, leading to crashes. 
@@ -15,11 +16,14 @@ extends Node
 # scan_complete(success)
 # connection_state(mac_address, state)
 
+
+
 # Signal definitions to communicate BLE events to the main application
 signal scan_started
 signal scan_stopped
 signal scan_progress
-signal device_found(mac_address, device_name)
+signal ble_device_found(mac_address, device_name)
+# signal device_found(mac_address, device_name)
 signal scan_error(error_message)
 signal connect_started(mac_address)
 signal connected(mac_address)
@@ -69,10 +73,10 @@ func _ready():
 
 func _connect_plugin_signals():
 	var ble_signals = [
-		"ble_scan_started",
-		"ble_scan_stopped",
+		#"ble_scan_started",
+		#"ble_scan_stopped",
 		"ble_device_found",
-		"ble_scan_error",
+		#"ble_scan_error",
 		#"connect_started",
 		#"connected",
 		#"connect_error",
@@ -96,11 +100,11 @@ func _connect_plugin_signals():
 
 	# connect all the signals
 	for signalx in ble_signals:
-		if has_signal(signalx):
+		if BleManager.has_signal(signalx):
 			var method_name = "_on_" + signalx
 			if has_method(method_name):
+				_android_plugin.connect(signalx, Callable(self, method_name))
 				print("signal connected ", signalx, " to ", method_name)
-				connect(signalx, Callable(self, method_name))
 			else:
 				printerr("Method not found for signal:", signalx)
 		else:
@@ -109,10 +113,11 @@ func _connect_plugin_signals():
 
 func start_scan(device_name = "", mac_address = "", service_uuid = ""):
 	if _android_plugin:
-		_android_plugin.startScan(device_name, mac_address, service_uuid)
 		_start_scan_timer()
+		_android_plugin.startScan(device_name, mac_address, service_uuid)
 	else:
 		printerr("BLE Plugin not loaded")
+
 
 func _start_scan_timer():
 	if scan_timer == null:
@@ -122,6 +127,7 @@ func _start_scan_timer():
 		scan_timer.connect("timeout", Callable(self, "_on_scan_timer_tick"))
 		add_child(scan_timer)
 	scan_timer.start()
+	# 🦨 make duration ble device scan will stay enabled a release/debug differniated constant in the gradle config.
 	remaining_time = 3
 	emit_signal("scan_progress", remaining_time)
 
@@ -182,6 +188,7 @@ func unsubscribe_notifications(mac_address, characteristic_uuid):
 		printerr("BLE Plugin not loaded")
 
 func pair_device(mac_address):
+	print("pair_device ", mac_address)
 	if _android_plugin:
 		_android_plugin.pairDevice(mac_address)
 	else:
@@ -209,7 +216,13 @@ func _on_scan_progress(remains):
 	pass
 
 func _on_ble_device_found(mac_address, device_name):
-	emit_signal("device_found", mac_address, device_name)
+	
+	## 🤔 I don't think next line is necessary (might cause a loop)
+	# emit_signal("ble_device_found", mac_address, device_name)
+	
+	## this print is never called
+	print("_on_ble_device_found ",mac_address, device_name)
+	pass
 
 func _on_scan_error(error_message):
 	emit_signal("scan_error", error_message)

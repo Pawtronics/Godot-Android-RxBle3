@@ -1,5 +1,17 @@
 package org.godotengine.plugin.android.rxble3
 
+/*
+ ⚠️ STOP: Do NOT place pawtronics logic here or BleManager.gd
+    this converts the RxAndroidBle library for BleManager.gd bindings
+    BleManager.gd
+
+    Pawtronics goes main.gd
+
+    Kotlin Native binding - https://godot-kotlin.readthedocs.io/en/latest/
+    Godot Kotlin - https://godot-kotl.in/en/stable/  
+
+*/
+
 import android.bluetooth.BluetoothDevice
 import android.os.ParcelUuid
 import android.content.Context
@@ -23,6 +35,7 @@ import org.godotengine.godot.Godot
 import org.godotengine.godot.plugin.GodotPlugin
 import org.godotengine.godot.plugin.UsedByGodot
 import org.godotengine.godot.plugin.SignalInfo
+
 import java.util.UUID
 
 class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
@@ -43,6 +56,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
     override fun getPluginName() = "RxAndroidBleGd"
 
     override fun getPluginMethods(): List<String> {
+        Log.v(TAG, "getPluginMethods()")
         return listOf(
             "startScan", "stopScan", "connectToDevice", "disconnectDevice",
             "readCharacteristic", "writeCharacteristic", "subscribeToNotifications", "unsubscribeFromNotifications",
@@ -50,13 +64,23 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         )
     }
 
-
-
     override fun getPluginSignals(): MutableSet<SignalInfo> {
+        Log.v(TAG, "getPluginSignals()")
+        // val signals = mutableSetOf<SignalInfo>()
+        // signals.add(SignalInfo("ble_scan_started"))
+        // signals.add(SignalInfo("ble_scan_stopped"))
+        // signals.add(SignalInfo("ble_device_found", String::class.java, String::class.java))
+        // signals.add(SignalInfo("connect_started", String::class.java))
+        // signals.add(SignalInfo("connected", String::class.java))
+        // signals.add(SignalInfo("connect_error", String::class.java, String::class.java))
+        // signals.add(SignalInfo("disconnected", String::class.java))        
+        // return signals
+
         return mutableSetOf(
             SignalInfo("ble_scan_started"),
             SignalInfo("ble_scan_stopped"),
             SignalInfo("ble_device_found", String::class.java, String::class.java),
+            // FUTURE: 
             SignalInfo("ble_scan_error", String::class.java),
             SignalInfo("ble_connected", String::class.java),
             SignalInfo("ble_connect_error", String::class.java, String::class.java),
@@ -166,19 +190,19 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
 
         // debugToast("BLE Scan Started")
         sendGodotEvent("ble_scan_started")
-        Log.v(TAG, "startScan() finished")
+        // Log.v(TAG, "startScan() finished")
 
         // Build dynamic scan filters based on provided parameters
         val filters = mutableListOf<ScanFilter.Builder>()
         if (deviceName.isNotEmpty()) {
             filters.add(ScanFilter.Builder().setDeviceName(deviceName))
         }
-        Log.v(TAG, "startScan() ..")
+        // Log.v(TAG, "startScan() ..")
         if (macAddress.isNotEmpty()) {
             filters.add(ScanFilter.Builder().setDeviceAddress(macAddress))
         }
 
-        Log.v(TAG, "startScan() ...")
+        // Log.v(TAG, "startScan() ...")
         if (serviceUuid.isNotEmpty()) {
             val parcelUuid = ParcelUuid(UUID.fromString(serviceUuid))
             filters.add(ScanFilter.Builder().setServiceUuid(parcelUuid))
@@ -194,8 +218,7 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
             emptyList()
         }
 
-        Log.v(TAG, "startScan() ....")
-
+        // Log.v(TAG, "startScan() ....")
         getDeviceDisposables(macAddress).add(
             rxBleClient.scanBleDevices(scanSettings, *scanFilterList.toTypedArray())
                 .subscribeOn(Schedulers.io())
@@ -204,6 +227,9 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
                     val device = scanResult.bleDevice
                     Log.v(TAG, "Found device: ${device.macAddress} (${device.name ?: "Unknown"})")
                     sendGodotEvent("ble_device_found", device.macAddress, device.name ?: "Unknown")
+
+                    // I think this also works:
+                    // emitSignal("ble_device_found", device.macAddress, device.name ?: "Unknown")
                 }, { throwable ->
                     Log.e(TAG, "Scan failed: ${throwable.message}")
                     sendGodotEvent("ble_scan_error", throwable.message ?: "Unknown error")
@@ -637,23 +663,15 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         } ?: Log.e(TAG, "Activity is null, cannot run on UI thread")
     }
 
-    // Instead of overloading, create a private, generic helper method to abstract event handling and use a safe public dispatcher.
-    private fun emitGodotSignal(eventName: String, params: Array<out Any>) {
-        try {
-            activity?.runOnUiThread {
-                emitSignal(eventName, *params)
-            } ?: Log.e(TAG, "Activity is null, cannot emit event: $eventName")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to emit Godot event: $eventName - ${e.message}")
-        }
-    }
-
+    
     /**
      * Sends an event to Godot with the specified name and parameters.
+     * Instead of overloading, create a private, generic helper method to abstract event handling and use a safe public dispatcher.
      */
-    private fun sendGodotEvent(eventName: String, vararg params: Any) {
+    // @UsedByGodot
+    fun sendGodotEvent(eventName: String, vararg params: Any) {
         activity?.runOnUiThread {
-            Log.v(TAG, "sendGodotEvent() called with eventName: '$eventName' and params: ${params.joinToString()}")
+            Log.v(TAG, "sendGodotEvent: '$eventName'; params: ${params.joinToString()}")
             try {
                 emitSignal(eventName, *params)
             } catch (e:Exception) {
@@ -663,9 +681,6 @@ class GodotAndroidPlugin(godot: Godot) : GodotPlugin(godot) {
         } ?: Log.e(TAG, "Activity is null, cannot emit event: $eventName")
     }
 
-    private fun sendGodotErrorEvent(errorMessage: String) {
-        sendGodotEvent("ble_error_occurred", errorMessage)
-    }    
 
 }
 

@@ -5,6 +5,14 @@
 [node name="Main" type="Node2D"]
 script = ExtResource("1_j0gfq")
 
+[node name="ButtonPair" type="Button" parent="."]
+offset_left = 737.0
+offset_top = 80.0
+offset_right = 1037.0
+offset_bottom = 139.0
+text = "Pair
+"
+
 [node name="ButtonHello" type="Button" parent="."]
 anchors_preset = 14
 anchor_top = 0.5
@@ -25,5 +33,6 @@ offset_right = 676.0
 offset_bottom = 140.0
 text = "Start scan"
 
+[connection signal="pressed" from="ButtonPair" to="." method="_on_button_pair_pressed"]
 [connection signal="pressed" from="ButtonHello" to="." method="_on_ButtonHello_pressed"]
 [connection signal="pressed" from="ButtonScan" to="." method="_on_ButtonScan_pressed"]

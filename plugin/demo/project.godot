@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 BleManager="*res://BleManager.gd"
+Logger="*res://addons/godot-logger/logger.gd"
 
 [debug]
 
@@ -25,7 +26,7 @@ settings/stdout/verbose_stdout=true
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/RxAndroidBleGd/plugin.cfg")
+enabled=PackedStringArray("res://addons/RxAndroidBleGd/plugin.cfg", "res://addons/godot-logger/plugin.cfg")
 
 [rendering]
 
