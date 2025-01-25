@@ -20,15 +20,19 @@ yek:
     ./yek . --max-size 8K | clip.exe
 
 build:
+    #  .\build-watch.ps1
     ./gradlew assemble build
     ls -la ./plugin/build/outputs/aar
+
 
 logs:
     adb logcat *:S godot:V RxAndroidBleGd:V bluetooth:V bt_stack:V [BT]:V
 
 prompt:
-   files-to-prompt . plugin/src/main/AndroidManifest.xml --ignore-gitignore --ignore "plugin/build/*" --ignore "THIRDPARTY.md" --ignore "README.md" -e md -e kt -e kts -e godot -e java -e gd -e md -e gradle -e cfg -e tres -e tcsn  | clip.exe
-   # yek 
+    # files-to-prompt . plugin/src/main/AndroidManifest.xml --ignore-gitignore --ignore "plugin/build/*" --ignore "THIRDPARTY.md" --ignore "README.md" -e md -e kt -e kts -e godot -e java -e gd -e md -e gradle -e cfg -e tres -e tcsn  | clip.exe
+    files-to-prompt . plugin/src/main/AndroidManifest.xml --ignore-gitignore --ignore "plugin/build/*" --ignore "THIRDPARTY.md" --ignore "README.md" -e kt -e kts -e godot -e java -e gd -e md -e cfg -e tres -e tcsn  | clip.exe
+    # yek
+
 
 check-permissions:
     adb shell dumpsys package org.godotengine.android.plugin.demo | grep permission
